@@ -1,0 +1,81 @@
+/* --- 1. Base Reset & Responsiveness --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box; /* Crucial for responsive padding */
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    background-color: #f4f7f6;
+    color: #333;
+}
+
+/* --- 2. Fluid Container --- */
+.container {
+    width: 95%;          /* Takes up most of the screen on mobile */
+    max-width: 1200px;   /* Won't get too wide on a large monitor */
+    margin: 0 auto;
+    padding: 20px 10px;
+}
+
+/* --- 3. Header & Navigation --- */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap; /* Allows menu to wrap on small screens */
+    margin-bottom: 30px;
+}
+
+/* --- 4. Room Inventory Grid --- */
+.room-grid {
+    display: flex;
+    flex-wrap: wrap;    /* This makes cards stack when they run out of space */
+    gap: 20px;
+    justify-content: flex-start;
+}
+
+/* --- 5. Room Cards (from your screenshot) --- */
+.room-card {
+    background: #fff;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    flex: 1 1 300px;    /* Cards will stay at least 300px wide, then stack */
+    max-width: 400px;   /* Prevents them from getting too huge on tablet */
+    text-align: left;
+}
+
+/* --- 6. Buttons & Interactive Elements --- */
+.btn-primary {
+    display: inline-block;
+    background-color: #3b63e1;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: background 0.3s;
+}
+
+/* --- 7. Mobile-Specific Adjustments --- */
+@media (max-width: 768px) {
+    .room-grid {
+        justify-content: center; /* Center cards on tablets/phones */
+    }
+
+    .room-card {
+        flex: 1 1 100%; /* Take full width on small phones */
+    }
+
+    .btn-primary {
+        width: 100%;    /* Button fills width on mobile for easier tapping */
+        text-align: center;
+    }
+
+    h1 {
+        font-size: 1.5rem; /* Shrink text slightly for smaller screens */
+    }
+}
