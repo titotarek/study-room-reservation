@@ -138,3 +138,38 @@ window.deleteSlot = function (id, roomId) {
 		})
 		.catch(console.error);
 };
+
+/* -----------------------------
+   SLOT TIME VALIDATION
+----------------------------- */
+const slotForm = document.getElementById("slotForm");
+const startInput = document.querySelector('input[name="start_time"]');
+const endInput = document.querySelector('input[name="end_time"]');
+const submitBtn = document.getElementById("slotSubmitBtn");
+const error = document.getElementById("slotError");
+
+function validateTime() {
+	const start = startInput.value;
+	const end = endInput.value;
+
+	if (!start || !end) return;
+
+	if (end <= start) {
+		error.classList.remove("hidden");
+		submitBtn.disabled = true;
+		submitBtn.classList.add("opacity-50", "cursor-not-allowed");
+	} else {
+		error.classList.add("hidden");
+		submitBtn.disabled = false;
+		submitBtn.classList.remove("opacity-50", "cursor-not-allowed");
+	}
+}
+
+startInput.addEventListener("input", validateTime);
+endInput.addEventListener("input", validateTime);
+
+slotForm.addEventListener("submit", function (e) {
+	if (endInput.value <= startInput.value) {
+		e.preventDefault();
+	}
+});

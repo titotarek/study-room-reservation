@@ -179,28 +179,39 @@ usort($rooms, fn($a, $b) => strcmp($a->roomNumber, $b->roomNumber));
                 <option>Saturday</option>
                 <option>Sunday</option>
             </select>
+        <label class="block text-sm font-semibold text-slate-600 mb-1">
+            Start Time
+        </label>
+        <input type="time"
+       name="start_time"
+       required
+       class="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition">
 
-            <input type="time"
-                   name="start_time"
-                   required
-                   class="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+           <label class="block text-sm font-semibold text-slate-600 mb-1">
+            End Time
+        </label>
+<input type="time"
+       name="end_time"
+       required
+       class="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition">
 
-            <input type="time"
-                   name="end_time"
-                   required
-                   class="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+<p id="slotError"
+   class="text-red-500 text-sm font-medium hidden bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+   End time must be after start time
+</p>
 
-            <button type="submit"
-                    id="slotSubmitBtn"
-                    class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold transition">
-                Add Slot
-            </button>
+<button type="submit"
+        id="slotSubmitBtn"
+        class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed">
+    Add Slot
+</button>
 
         </form>
     </div>
 </div>
 
 <script src="/assets/js/admin-rooms-tabs.js"></script>
+<script src="/assets/js/admin-rooms.js"></script>
 
 </body>
 </html>

@@ -48,111 +48,108 @@
                         </button>
                     </div>
 
-                    <!-- WEEKLY SCHEDULE -->
-                    <!-- WEEKLY SCHEDULE -->
-<div class="mt-8">
+                    <div class="mt-8">
 
-    <div class="flex items-center justify-between mb-6">
-        <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-widest">
-            Weekly Schedule
-        </h3>
-        <span class="text-xs text-slate-400">
-            Recurring availability
-        </span>
-    </div>
-
-    <?php if (!empty($room->weeklySlots)): ?>
-
-        <?php
-        $order = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-        $grouped = [];
-
-        foreach ($room->weeklySlots as $slot) {
-            $grouped[$slot['day_of_week']][] = $slot;
-        }
-        ?>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-
-            <?php foreach ($order as $day): ?>
-                <?php if (!empty($grouped[$day])): ?>
-
-                    <div class="bg-gradient-to-br from-white to-slate-50 
-                                border border-slate-100 
-                                rounded-2xl p-5 
-                                shadow-sm hover:shadow-md 
-                                transition-all duration-300">
-
-                        <div class="flex items-center justify-between mb-4">
-                            <p class="font-bold text-slate-800">
-                                <?= $day ?>
-                            </p>
-                            <span class="text-[10px] text-slate-400 uppercase tracking-widest">
-                                <?= count($grouped[$day]) ?> Slots
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-widest">
+                                Weekly Schedule
+                            </h3>
+                            <span class="text-xs text-slate-400">
+                                Recurring availability
                             </span>
                         </div>
 
-                        <div class="space-y-3">
+                        <?php if (!empty($room->weeklySlots)): ?>
 
-                            <?php foreach ($grouped[$day] as $slot): ?>
-                                <form action="/reservations/store" method="POST"
-                                      class="flex items-center justify-between 
-                                             bg-white border border-slate-100 
-                                             rounded-xl px-3 py-2 
-                                             hover:border-blue-300 hover:bg-blue-50 
-                                             transition-all duration-200">
+                            <?php
+                            $order = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+                            $grouped = [];
 
-                                    <div class="text-sm font-medium text-slate-700">
-                                        <?= substr($slot['start_time'],0,5) ?>
-                                        -
-                                        <?= substr($slot['end_time'],0,5) ?>
-                                    </div>
+                            foreach ($room->weeklySlots as $slot) {
+                                $grouped[$slot['day_of_week']][] = $slot;
+                            }
+                            ?>
 
-                                    <input type="hidden" name="room_id" value="<?= $roomId ?>">
-                                    <input type="hidden" name="time_slot_id" value="<?= $slot['id'] ?>">
-                                    <input type="hidden" name="reservation_date" value="<?= date('Y-m-d') ?>">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
 
-                                    <button type="submit"
-                                            class="text-xs font-semibold 
-                                                   bg-blue-600 text-white 
-                                                   px-3 py-1.5 rounded-lg 
-                                                   hover:bg-blue-700 
-                                                   transition-all">
-                                        Book
-                                    </button>
+                                <?php foreach ($order as $day): ?>
+                                    <?php if (!empty($grouped[$day])): ?>
 
-                                </form>
-                            <?php endforeach; ?>
+                                        <div class="bg-gradient-to-br from-white to-slate-50 
+                                                    border border-slate-100 
+                                                    rounded-2xl p-5 
+                                                    shadow-sm hover:shadow-md 
+                                                    transition-all duration-300">
 
-                        </div>
+                                            <div class="flex items-center justify-between mb-4">
+                                                <p class="font-bold text-slate-800">
+                                                    <?= $day ?>
+                                                </p>
+                                                <span class="text-[10px] text-slate-400 uppercase tracking-widest">
+                                                    <?= count($grouped[$day]) ?> Slots
+                                                </span>
+                                            </div>
 
-                    </div>
+                                            <div class="space-y-3">
 
-                <?php endif; ?>
-            <?php endforeach; ?>
+                                                <?php foreach ($grouped[$day] as $slot): ?>
 
-        </div>
+                                                    <?php $isTaken = !empty($slot['is_taken']); ?>
 
-    <?php else: ?>
-        <div class="bg-slate-50 border border-dashed border-slate-200 
-                    rounded-2xl p-6 text-center text-slate-400">
-            No weekly schedule configured.
-        </div>
-    <?php endif; ?>
+                                                    <form action="/reservations/store" method="POST"
+                                                        class="flex items-center justify-between rounded-xl px-3 py-2 border transition-all duration-200
+                                                        <?= $isTaken
+                                                            ? 'bg-gray-200 border-gray-200 opacity-60 pointer-events-none'
+                                                            : 'bg-white border-slate-100 hover:border-blue-300 hover:bg-blue-50' ?>">
 
-</div>
+                                                        <div class="text-sm font-medium text-slate-700">
+                                                            <?= substr($slot['start_time'],0,5) ?>
+                                                            -
+                                                            <?= substr($slot['end_time'],0,5) ?>
+                                                        </div>
 
-                    <!-- AJAX DAILY SLOTS -->
-                    <div id="slots-container-<?= $roomId ?>"
-                         class="mt-6 pt-6 border-t border-slate-50 hidden">
+                                                        <?php if (!$isTaken): ?>
 
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">
-                            Available Time Slots For Selected Date
-                        </p>
+                                                            <input type="hidden" name="room_id" value="<?= $roomId ?>">
+                                                            <input type="hidden" name="time_slot_id" value="<?= $slot['id'] ?>">
+                                                            <input type="hidden" name="reservation_date" value="<?= date('Y-m-d') ?>">
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3"
-                             id="slot-grid-<?= $roomId ?>">
-                        </div>
+                                                            <button type="submit"
+                                                                class="text-xs font-semibold bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-all">
+                                                                Book
+                                                            </button>
+
+                                                        <?php else: ?>
+
+                                                            <button disabled
+                                                                class="text-xs font-semibold bg-gray-400 text-white px-3 py-1.5 rounded-lg cursor-not-allowed">
+                                                                Taken
+                                                            </button>
+
+                                                        <?php endif; ?>
+
+                                                    </form>
+
+                                                <?php endforeach; ?>
+
+                                            </div>
+
+                                        </div>
+
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+
+                            </div>
+
+                        <?php else: ?>
+
+                            <div class="bg-slate-50 border border-dashed border-slate-200 
+                                        rounded-2xl p-6 text-center text-slate-400">
+                                No weekly schedule configured.
+                            </div>
+
+                        <?php endif; ?>
+
                     </div>
 
                 </div>

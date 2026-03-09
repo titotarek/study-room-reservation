@@ -71,6 +71,34 @@ document.addEventListener("DOMContentLoaded", () => {
 		fetchAvailableSlots();
 	});
 
+	/* ✅ Validate slot time */
+	function validateSelectedSlot() {
+		const selected = slotSelect.options[slotSelect.selectedIndex];
+		if (!selected) return false;
+
+		const start = selected.dataset.start;
+		const end = selected.dataset.end;
+
+		if (!start || !end) return true;
+
+		const startTime = new Date(`1970-01-01T${start}`);
+		const endTime = new Date(`1970-01-01T${end}`);
+
+		if (endTime <= startTime) {
+			showMessage(
+				"Invalid time slot detected. End time must be after start time.",
+			);
+			submitBtn.disabled = true;
+			return false;
+		}
+
+		hideMessage();
+		submitBtn.disabled = false;
+		return true;
+	}
+
+	slotSelect.addEventListener("change", validateSelectedSlot);
+
 	async function fetchAvailableSlots() {
 		const roomId = roomSelect.value;
 		const date = dateInput.value;
@@ -81,7 +109,6 @@ document.addEventListener("DOMContentLoaded", () => {
 		submitBtn.disabled = true;
 		slotSelect.innerHTML = "<option>Loading...</option>";
 
-		// ✅ CORRECT ENDPOINT (NO .php)
 		let url = `/api/available-slots?room_id=${roomId}&date=${date}`;
 
 		if (reservationId) {
@@ -101,9 +128,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
 			if (data.success && Array.isArray(data.slots) && data.slots.length > 0) {
 				data.slots.forEach((slot) => {
+					/* ✅ Skip invalid slots coming from backend */
+					if (slot.start_time >= slot.end_time) {
+						return;
+					}
+
 					const option = document.createElement("option");
 					option.value = slot.id;
 					option.textContent = slot.display_time;
+
+					/* store start/end for validation */
+					option.dataset.start = slot.start_time;
+					option.dataset.end = slot.end_time;
 
 					if (slot.id == currentSlotId) {
 						option.selected = true;

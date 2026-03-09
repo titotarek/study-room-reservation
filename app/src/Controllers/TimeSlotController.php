@@ -97,6 +97,12 @@ class TimeSlotController
             exit;
         }
 
+        // NEW VALIDATION: End time must be after start time
+        if (strtotime($endTime) <= strtotime($startTime)) {
+            header('Location: /admin/rooms?error=invalid_time');
+            exit;
+        }
+
         $data = [
             'room_id'     => $roomId,
             'day_of_week' => $day,
@@ -131,6 +137,12 @@ class TimeSlotController
 
         if ($slotId <= 0 || $roomId <= 0 || $day === '' || $start === '' || $end === '') {
             header('Location: /admin/rooms?error=invalid_input');
+            exit;
+        }
+
+        // NEW VALIDATION: End time must be after start time
+        if (strtotime($end) <= strtotime($start)) {
+            header('Location: /admin/rooms?error=invalid_time');
             exit;
         }
 

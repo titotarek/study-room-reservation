@@ -22,6 +22,15 @@ class TimeSlotRepository implements ITimeSlotRepository
     public function create(array $data): bool
     {
         try {
+
+            $start = strtotime($data['start_time']);
+            $end   = strtotime($data['end_time']);
+
+            // ✅ Prevent invalid slots
+            if ($end <= $start) {
+                throw new RuntimeException("End time must be after start time.");
+            }
+
             $stmt = $this->db->prepare(
                 "INSERT INTO time_slots (room_id, day_of_week, start_time, end_time)
                  VALUES (:room_id, :day_of_week, :start_time, :end_time)"
@@ -50,6 +59,7 @@ class TimeSlotRepository implements ITimeSlotRepository
                 "SELECT *
                  FROM time_slots
                  WHERE room_id = :room_id
+                 AND end_time > start_time
                  ORDER BY FIELD(
                     day_of_week,
                     'Monday','Tuesday','Wednesday',
@@ -90,6 +100,7 @@ class TimeSlotRepository implements ITimeSlotRepository
                 FROM time_slots ts
                 WHERE ts.room_id = :room_id_main
                   AND ts.day_of_week = :day_name
+                  AND ts.end_time > ts.start_time
                   AND ts.id NOT IN (
                         SELECT time_slot_id
                         FROM reservations
@@ -124,25 +135,23 @@ class TimeSlotRepository implements ITimeSlotRepository
     }
 
     /**
-     * Delete a time slot by ID — cancels future reservations first
-     * to satisfy the foreign key constraint.
+     * Delete a time slot by ID
      */
     public function delete(int $id): bool
     {
         try {
             $this->db->beginTransaction();
 
-            // Remove future reservations linked to this slot first
             $this->db->prepare("
                 DELETE FROM reservations
                 WHERE time_slot_id = :slot_id
                   AND date >= CURDATE()
             ")->execute(['slot_id' => $id]);
 
-            // Now delete the slot itself
             $stmt = $this->db->prepare(
                 "DELETE FROM time_slots WHERE id = :id"
             );
+
             $result = $stmt->execute(['id' => $id]);
 
             $this->db->commit();
@@ -157,7 +166,7 @@ class TimeSlotRepository implements ITimeSlotRepository
     }
 
     /**
-     * Find a single time slot by ID
+     * Find a single time slot
      */
     public function find(int $id): ?array
     {
@@ -170,6 +179,10 @@ class TimeSlotRepository implements ITimeSlotRepository
 
             $slot = $stmt->fetch(PDO::FETCH_ASSOC);
 
+            if ($slot && $slot['end_time'] <= $slot['start_time']) {
+                return null;
+            }
+
             return $slot ?: null;
 
         } catch (PDOException $e) {
@@ -178,9 +191,21 @@ class TimeSlotRepository implements ITimeSlotRepository
         }
     }
 
+    /**
+     * Update slot
+     */
     public function update(int $id, array $data): bool
     {
         try {
+
+            $start = strtotime($data['start_time']);
+            $end   = strtotime($data['end_time']);
+
+            // ✅ Prevent invalid update
+            if ($end <= $start) {
+                throw new RuntimeException("End time must be after start time.");
+            }
+
             $stmt = $this->db->prepare(
                 "UPDATE time_slots
                  SET day_of_week = :day_of_week,
