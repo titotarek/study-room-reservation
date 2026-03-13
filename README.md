@@ -3,178 +3,533 @@
 Course: Web Development 1  
 Term: 2.2  
 
-## Project Overview
+---
 
-This project is a Dockerized Study Room Reservation System for a university campus.
+# Project Overview
+
+This project is a **Dockerized Study Room Reservation System** designed for a university environment.
 
 Students can:
+
 - View available study rooms
+- Check available time slots
 - Create reservations
 - Edit or cancel their own reservations
 - View their reservation history
 
 Administrators can:
-- Manage rooms (CRUD)
+
+- Manage rooms (Create / Update / Delete)
+- Manage room time slots
 - View all reservations
-- Delete reservations if necessary
+- Delete reservations when necessary
 
-The project demonstrates the use of MVC architecture, routing, authentication, API communication, and secure data handling.
+The system demonstrates the implementation of:
 
-## How to Run the Project
+- MVC architecture
+- REST-style API endpoints
+- Authentication and authorization
+- JavaScript-based dynamic UI updates
+- Secure database interaction
+- Layered application architecture
 
-Make sure Docker and Docker Compose are installed.
+---
 
-In the project root directory, run:
+# How to Run the Project
+
+Make sure **Docker** and **Docker Compose** are installed.
+
+From the project root directory run:
 
 ```bash
 docker-compose up
+```
 
-Open the application at:
+Open the application in your browser:
 
+```
 http://localhost:8080
+```
 
 phpMyAdmin is available at:
 
+```
 http://localhost:8081
+```
 
-Login Credentials
-Admin
+---
 
-Email: admin@example.com
+# Login Credentials
 
-Password: admin123
+### Admin
 
-Student
+Email:
 
-Email: student@example.com
+```
+admin@example.com
+```
 
-Password: password123
+Password:
 
-Database
+```
+admin123
+```
 
-A database export is included in the root directory as:
+### Student
 
+Email:
+
+```
+student@example.com
+```
+
+Password:
+
+```
+123456
+```
+
+---
+
+# Database
+
+A database export is included in the root directory:
+
+```
 database.sql
+```
 
-It can be imported using phpMyAdmin if needed.
+It can be imported using **phpMyAdmin** if needed.
 
-Architecture & Design
+The database includes the following main tables:
 
-The application follows a layered MVC architecture:
+- users
+- rooms
+- reservations
+- timeslots
 
-Controllers handle HTTP requests and responses
+These tables are relational and enforce logical relationships between entities.
 
-Services contain business logic
+---
 
-Repositories handle database access using PDO
+# Application Architecture
 
-ViewModels map data to views
+The project follows a **layered MVC architecture**.
 
-Views are responsible for presentation
+```
+Controller → Service → Repository → Database
+```
 
-Routing
+Directory structure:
 
-Routing is implemented using FastRoute in:
+```
+src/
+ ├── Controllers
+ ├── Services
+ ├── Repositories
+ ├── Interfaces
+ ├── ViewModels
+ ├── Views
+ └── Config
+```
 
+This structure separates responsibilities between layers and keeps the application maintainable and scalable.
+
+---
+
+## Controllers
+
+Controllers handle HTTP requests and responses.
+
+Examples:
+
+```
+src/Controllers/AuthController.php
+src/Controllers/RoomController.php
+src/Controllers/ReservationController.php
+src/Controllers/AdminController.php
+src/Controllers/ApiController.php
+```
+
+Controllers receive requests, call services, and return views or JSON responses.
+
+---
+
+## Services
+
+Services contain business logic and coordinate application behaviour.
+
+Examples:
+
+```
+src/Services/AuthService.php
+src/Services/RoomService.php
+src/Services/ReservationService.php
+src/Services/TimeSlotService.php
+```
+
+Services act as the application logic layer between controllers and repositories.
+
+---
+
+## Repositories
+
+Repositories handle **database access using PDO**.
+
+Examples:
+
+```
+src/Repositories/UserRepository.php
+src/Repositories/RoomRepository.php
+src/Repositories/ReservationRepository.php
+src/Repositories/TimeSlotRepository.php
+```
+
+Repositories isolate database logic from controllers and services.
+
+---
+
+## Interfaces
+
+Repository interfaces define contracts between services and repositories.
+
+Examples:
+
+```
+src/Interfaces/IUserRepository.php
+src/Interfaces/IRoomRepository.php
+src/Interfaces/IReservationRepository.php
+src/Interfaces/ITimeSlotRepository.php
+```
+
+Using interfaces ensures loose coupling and improves maintainability.
+
+---
+
+## ViewModels
+
+ViewModels prepare data for presentation and prevent business logic inside views.
+
+Examples:
+
+```
+src/ViewModels/RoomViewModel.php
+src/ViewModels/ReservationViewModel.php
+src/ViewModels/TimeSlotViewModel.php
+```
+
+They transform data into a format suitable for the UI.
+
+---
+
+## Views
+
+Views are responsible only for rendering the user interface.
+
+Examples:
+
+```
+src/Views/auth/
+src/Views/rooms/
+src/Views/reservations/
+src/Views/admin/
+```
+
+Views use **Tailwind CSS** for responsive styling and layout.
+
+---
+
+# Routing
+
+Routing is implemented using **FastRoute**.
+
+Routing configuration is located in:
+
+```
 public/index.php
+```
 
 All routes are defined centrally and mapped to controller methods.
 
-Dependency Structure
+Example request flow:
 
-Controllers depend on Services
+```
+HTTP Request
+     ↓
+FastRoute Router
+     ↓
+Controller
+     ↓
+Service
+     ↓
+Repository
+     ↓
+Database
+```
 
-Services depend on Repository interfaces
+---
 
-Repositories handle PDO database communication
+# Security Measures
 
-This ensures a clear separation of concerns and reduces coupling.
+## Authentication
 
-Security Measures
-Authentication & Authorization
+User authentication is handled using sessions.
 
-Sessions are used to store authenticated users
+Relevant files:
 
-session_regenerate_id() prevents session fixation
+```
+src/Controllers/AuthController.php
+src/Services/AuthService.php
+```
 
-Admin routes require role === 'admin'
+Features implemented:
 
-Unauthorized users are redirected
+- Session-based login
+- Session regeneration
 
-Password Security
+```
+session_regenerate_id(true)
+```
 
-Passwords are hashed using password_hash()
+This prevents session fixation attacks.
 
-Passwords are verified using password_verify()
+---
 
-Plain-text passwords are never stored
+## Authorization
 
-SQL Injection Protection
+Admin-only routes are protected.
 
-All database queries use PDO prepared statements
+Example file:
 
-Parameters are safely bound
+```
+src/Controllers/AdminController.php
+```
 
-XSS Protection
+Access control checks the user role:
 
-Output is escaped using htmlspecialchars() in views
+```
+role === 'admin'
+```
 
-Server-Side Validation
+Unauthorized users are redirected.
 
-Required fields are validated before saving
+---
 
-Reservation logic validates time slots
+## Password Security
 
-Users cannot edit or delete reservations belonging to others
+Passwords are securely hashed using:
 
-API & JavaScript
+```
+password_hash()
+```
 
-The application includes API endpoints that return JSON data.
+Passwords are verified using:
 
-JavaScript is used to:
+```
+password_verify()
+```
 
-Dynamically load time slots without refreshing the page
+Plain-text passwords are **never stored**.
 
-Communicate with API endpoints using fetch()
+---
 
-Update UI components dynamically
+## SQL Injection Protection
 
-All JavaScript is located in /public/assets/js/ and is not embedded directly in views.
+All database queries use **PDO prepared statements**.
 
-GDPR Compliance
+Example pattern:
 
-The application considers GDPR principles:
+```
+$stmt = $pdo->prepare($query);
+$stmt->execute($params);
+```
 
-Passwords are securely hashed
+Prepared statements prevent SQL injection attacks.
 
-Only necessary personal data is stored (name, email)
+---
 
-Users can view and delete their own reservations
+## XSS Protection
 
-No sensitive personal data is collected
+User-generated output is escaped using:
 
-No personal data is exposed via public API endpoints
+```
+htmlspecialchars()
+```
 
-WCAG Accessibility Considerations
+This prevents malicious JavaScript execution in the browser.
 
-The application includes:
+---
 
-Semantic HTML structure
+## Server-Side Validation
 
-Proper <label> elements for form inputs
+User input is validated before saving to the database.
 
-Clear button states
+Examples:
 
-Responsive layout for mobile, tablet, and desktop
+- Required fields
+- Correct data types
+- Valid reservation times
+- Reservation ownership verification
 
-Sufficient color contrast
+Users cannot modify or delete reservations belonging to other users.
 
-Keyboard-accessible forms
+---
 
-Additional Notes
+# API Implementation
 
-The application uses Docker for consistent development environments
+The application exposes API endpoints that return **JSON data**.
 
-Global error and exception handling is implemented
+Example controller:
 
-MVC structure ensures maintainability and scalability
+```
+src/Controllers/ApiController.php
+```
+
+Example endpoints:
+
+```
+/api/rooms
+/api/timeslots
+```
+
+Example JSON response:
+
+```json
+[
+  {
+    "room_id": 1,
+    "room_name": "Room A",
+    "capacity": 6
+  }
+]
+```
+
+These endpoints are used by the frontend JavaScript to dynamically update the user interface.
+
+---
+
+# JavaScript Functionality
+
+JavaScript improves the user experience through dynamic interactions.
+
+Examples:
+
+- Dynamic loading of time slots
+- Modal dialogs
+- Asynchronous API requests
+- Updating UI without page refresh
+
+JavaScript communicates with the API using:
+
+```
+fetch()
+```
+
+All JavaScript files are located in:
+
+```
+public/assets/js/
+```
+
+JavaScript is **not embedded inside HTML views**, ensuring separation of concerns.
+
+---
+
+# GDPR Compliance
+
+The application follows **basic GDPR principles**.
+
+Measures implemented:
+
+- Only necessary personal data is stored (name and email)
+- Passwords are securely hashed
+- No sensitive personal data is collected
+- Users can manage their own reservations
+- API endpoints do not expose personal data
+- Sessions protect authenticated access
+
+---
+
+# WCAG Accessibility Considerations
+
+The application considers **WCAG accessibility guidelines**.
+
+Accessibility features include:
+
+- Semantic HTML structure
+- Proper `<label>` elements for form inputs
+- Accessible form controls
+- Responsive design for different devices
+- Sufficient color contrast
+- Keyboard-accessible forms
+- Clear button states
+
+The interface adapts to:
+
+- Mobile devices
+- Tablets
+- Laptops
+- Desktop screens
+
+---
+
+# Project Structure
+
+Key directories:
+
+```
+src/
+- Controllers → handle HTTP requests
+- Services → contain business logic
+- Repositories → handle database communication
+- Interfaces → define repository contracts
+- ViewModels → prepare data for views
+- Views → render the user interface
+
+public/
+- index.php → application entry point
+- assets/js → JavaScript files
+- assets/css → styling
+```
+
+This structure ensures a clear separation between business logic, data access, and presentation.
+
+---
+
+# Additional Technical Notes
+
+The project uses **Docker** to provide a consistent development environment.
+
+Docker services include:
+
+- PHP
+- MySQL
+- phpMyAdmin
+
+Global error and exception handling are implemented to improve application stability.
+
+Example:
+
+```
+set_error_handler()
+set_exception_handler()
+```
+
+The layered MVC architecture ensures:
+
+- Maintainability
+- Scalability
+- Separation of concerns
+
+---
+
+# Known Limitations
+
+Some improvements could be made in future versions:
+
+- Additional unit testing could be added
+- Role-based middleware could further improve authorization
+- More advanced accessibility testing could be implemented
+- Additional API endpoints could expose more reservation data
+
+These improvements would further increase the robustness and scalability of the system.
