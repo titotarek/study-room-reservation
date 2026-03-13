@@ -1,9 +1,6 @@
 <?php require __DIR__ . '/partials/header.php'; ?>
 
 <?php
-/** @var array|null $reservation */
-/** @var array $rooms */
-
 $isEditing = isset($reservation);
 $today = date('Y-m-d');
 ?>
@@ -88,7 +85,7 @@ $today = date('Y-m-d');
                                class="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 font-semibold">
                     </div>
 
-                    <!-- DATE -->
+                    <!-- DATE (FIXED FIELD NAME) -->
                     <div>
                         <label class="block text-xs font-bold uppercase text-slate-400 mb-2">
                             Date
@@ -96,7 +93,7 @@ $today = date('Y-m-d');
 
                         <input type="date"
                                id="dateInput"
-                               name="reservation_date"
+                               name="date"
                                min="<?= $today ?>"
                                required
                                value="<?= $isEditing

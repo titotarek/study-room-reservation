@@ -10,7 +10,6 @@ async function viewSlots(roomId) {
 	}
 
 	try {
-		// ✅ FIXED: Use LOCAL date (no UTC shift)
 		const now = new Date();
 		const today =
 			now.getFullYear() +
@@ -18,9 +17,6 @@ async function viewSlots(roomId) {
 			String(now.getMonth() + 1).padStart(2, "0") +
 			"-" +
 			String(now.getDate()).padStart(2, "0");
-
-		console.log("Room ID:", roomId);
-		console.log("Date sent:", today);
 
 		const res = await fetch(
 			`/api/available-slots?room_id=${roomId}&date=${today}`,
@@ -43,28 +39,49 @@ async function viewSlots(roomId) {
 
 		data.slots.forEach((slot) => {
 			const wrapper = document.createElement("div");
+
+			const taken = slot.is_taken == 1;
+
 			wrapper.className =
-				"flex justify-between items-center bg-slate-50 border p-4 rounded-2xl";
+				"flex justify-between items-center border p-4 rounded-2xl " +
+				(taken
+					? "bg-gray-200 opacity-60"
+					: "bg-slate-50 hover:bg-blue-50 transition");
+
+			let buttonHTML = "";
+
+			if (taken) {
+				buttonHTML = `
+					<button disabled
+						class="bg-gray-400 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-not-allowed">
+						Taken
+					</button>
+				`;
+			} else {
+				buttonHTML = `
+					<form action="/reservations/store" method="POST">
+						<input type="hidden" name="room_id" value="${roomId}">
+						<input type="hidden" name="time_slot_id" value="${slot.id}">
+						<input type="hidden" name="reservation_date" value="${today}">
+						<button type="submit"
+							class="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition">
+							BOOK
+						</button>
+					</form>
+				`;
+			}
 
 			wrapper.innerHTML = `
-                <div>
-                    <p class="text-xs font-bold">
-                        ${slot.start_time.substring(0, 5)} - ${slot.end_time.substring(0, 5)}
-                    </p>
-                    <p class="text-[10px] text-slate-400 uppercase">
-                        ${slot.day_of_week}
-                    </p>
-                </div>
-                <form action="/reservations/store" method="POST">
-                    <input type="hidden" name="room_id" value="${roomId}">
-                    <input type="hidden" name="time_slot_id" value="${slot.id}">
-                    <input type="hidden" name="reservation_date" value="${today}">
-                    <button type="submit"
-                        class="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition">
-                        BOOK
-                    </button>
-                </form>
-            `;
+				<div>
+					<p class="text-xs font-bold">
+						${slot.start_time.substring(0, 5)} - ${slot.end_time.substring(0, 5)}
+					</p>
+					<p class="text-[10px] text-slate-400 uppercase">
+						${slot.day_of_week}
+					</p>
+				</div>
+				${buttonHTML}
+			`;
 
 			grid.appendChild(wrapper);
 		});

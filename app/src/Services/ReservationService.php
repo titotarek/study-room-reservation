@@ -23,15 +23,44 @@ class ReservationService
        SLOT METHODS
     ====================================================== */
 
-    public function getSlotsForRoom(int $roomId): array
-    {
-        try {
-            return $this->repo->getSlotsByRoom($roomId);
-        } catch (\Throwable $e) {
-            error_log("getSlotsForRoom error: " . $e->getMessage());
-            return [];
+ public function getSlotsForRoom(int $roomId, ?string $reservationDate = null): array
+{
+    try {
+
+        if ($reservationDate === null) {
+            $reservationDate = date('Y-m-d');
         }
+
+        // get weekly slots
+        // $slots = $this->repo->getSlotsByRoom($roomId);
+        $slots = $this->repo->getSlotsByRoom($roomId, $reservationDate);
+
+        // check reservations for that room + date
+        $stmt = $this->db->prepare("
+            SELECT time_slot_id
+            FROM reservations
+            WHERE room_id = :room_id
+            AND date = :date
+        ");
+
+        $stmt->execute([
+            'room_id' => $roomId,
+            'date' => $reservationDate
+        ]);
+
+        $takenSlots = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        foreach ($slots as &$slot) {
+            $slot['is_taken'] = in_array($slot['id'], $takenSlots);
+        }
+
+        return $slots;
+
+    } catch (\Throwable $e) {
+        error_log("getSlotsForRoom error: " . $e->getMessage());
+        return [];
     }
+}
 
     public function getSlotById(?int $id): ?array
     {
@@ -40,6 +69,7 @@ class ReservationService
         }
 
         try {
+
             $stmt = $this->db->prepare("
                 SELECT *
                 FROM time_slots
@@ -48,19 +78,18 @@ class ReservationService
             ");
 
             $stmt->execute(['id' => $id]);
+
             $slot = $stmt->fetch(PDO::FETCH_ASSOC);
 
             return $slot ?: null;
 
         } catch (PDOException $e) {
+
             error_log("getSlotById error: " . $e->getMessage());
             return null;
         }
     }
 
-    /**
-     * API METHOD - CLEANED
-     */
     public function getAvailableSlots(
         int $roomId,
         string $date,
@@ -72,6 +101,7 @@ class ReservationService
         }
 
         try {
+
             return $this->repo->getAvailableSlotsByRoomAndDate(
                 $roomId,
                 $date,
@@ -79,6 +109,7 @@ class ReservationService
             );
 
         } catch (\Throwable $e) {
+
             error_log("getAvailableSlots error: " . $e->getMessage());
             return [];
         }
@@ -100,7 +131,7 @@ class ReservationService
                 return false;
             }
 
-            $date = $data['reservation_date'] ?? null;
+            $date = $data['date'] ?? null;
 
             if (!$date || !$this->isValidDate($date)) {
                 return false;
@@ -111,17 +142,22 @@ class ReservationService
             }
 
             $slot = $this->getSlotById((int)$data['time_slot_id']);
+
             if (!$slot || $slot['start_time'] >= $slot['end_time']) {
                 return false;
             }
 
             $roomStmt = $this->db->prepare("
-                SELECT capacity 
-                FROM rooms 
-                WHERE id = :id 
+                SELECT capacity
+                FROM rooms
+                WHERE id = :id
                 LIMIT 1
             ");
-            $roomStmt->execute(['id' => $data['room_id']]);
+
+            $roomStmt->execute([
+                'id' => $data['room_id']
+            ]);
+
             $room = $roomStmt->fetch(PDO::FETCH_ASSOC);
 
             $numPeople = (int)($data['num_people'] ?? 1);
@@ -130,6 +166,7 @@ class ReservationService
                 return false;
             }
 
+            /* availability check */
             if (
                 !$this->repo->isRoomAvailable(
                     (int)$data['room_id'],
@@ -140,7 +177,7 @@ class ReservationService
                 return false;
             }
 
-            $data['reservation_date'] = $date;
+            $data['date'] = $date;
 
             $success = $this->repo->create($data);
 
@@ -151,6 +188,7 @@ class ReservationService
             return (int)$this->db->lastInsertId();
 
         } catch (\Throwable $e) {
+
             error_log("createReservation error: " . $e->getMessage());
             return false;
         }
@@ -160,55 +198,52 @@ class ReservationService
        UPDATE RESERVATION
     ====================================================== */
 
-    public function updateReservation(int $id, int $userId, array $data): bool
-    {
-        try {
+   public function updateReservation(int $id, int $userId, array $data): bool
+{
+    try {
 
-            if (!$id || !$userId) {
-                return false;
-            }
-
-            $date = $data['reservation_date'] ?? null;
-
-            if (
-                empty($data['room_id']) ||
-                empty($data['time_slot_id']) ||
-                !$date ||
-                !$this->isValidDate($date)
-            ) {
-                return false;
-            }
-
-            if ($date < date('Y-m-d')) {
-                return false;
-            }
-
-            $slot = $this->getSlotById((int)$data['time_slot_id']);
-            if (!$slot || $slot['start_time'] >= $slot['end_time']) {
-                return false;
-            }
-
-            if (
-                !$this->repo->isRoomAvailable(
-                    (int)$data['room_id'],
-                    $date,
-                    (int)$data['time_slot_id'],
-                    $id
-                )
-            ) {
-                return false;
-            }
-
-            $data['reservation_date'] = $date;
-
-            return $this->repo->update($id, $userId, $data);
-
-        } catch (\Throwable $e) {
-            error_log("updateReservation error: " . $e->getMessage());
+        if (!$id || !$userId) {
             return false;
         }
-    }
 
+        $date = $data['date'] ?? null;
+
+        if (
+            empty($data['room_id']) ||
+            empty($data['time_slot_id']) ||
+            !$date ||
+            !$this->isValidDate($date)
+        ) {
+            return false;
+        }
+
+        $slot = $this->getSlotById((int)$data['time_slot_id']);
+
+        if (!$slot || $slot['start_time'] >= $slot['end_time']) {
+            return false;
+        }
+
+        if (
+            !$this->repo->isRoomAvailable(
+                (int)$data['room_id'],
+                $date,
+                (int)$data['time_slot_id'],
+                $id
+            )
+        ) {
+            return false;
+        }
+
+        $data['date'] = $date;
+
+        return $this->repo->update($id, $userId, $data);
+
+    } catch (\Throwable $e) {
+
+        error_log("updateReservation error: " . $e->getMessage());
+        return false;
+    }
+}
     /* =====================================================
        FETCH USER DATA
     ====================================================== */
@@ -258,7 +293,7 @@ class ReservationService
             ");
 
             $stmt->execute([
-                'id'      => $id,
+                'id' => $id,
                 'user_id' => $userId
             ]);
 
@@ -276,6 +311,7 @@ class ReservationService
             return $res;
 
         } catch (\Throwable $e) {
+
             error_log("getDetailedReservation error: " . $e->getMessage());
             return null;
         }
@@ -306,7 +342,7 @@ class ReservationService
     }
 
     /* =====================================================
-       RESERVATION DETAILS (used by success page)
+       RESERVATION DETAILS
     ====================================================== */
 
     public function getReservationDetails(int $id): ?array

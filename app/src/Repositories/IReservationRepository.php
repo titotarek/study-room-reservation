@@ -4,7 +4,8 @@ namespace App\Repositories;
 
 interface IReservationRepository
 {
-    public function getSlotsByRoom(int $roomId): array;
+    // public function getSlotsByRoom(int $roomId): array;
+    public function getSlotsByRoom(int $roomId, string $reservationDate): array;
 
     public function getSlotsByRoomAndDate(int $roomId, string $date, int $excludeId = 0): array;
 

@@ -7,15 +7,22 @@ use PDO;
 use PDOException;
 use RuntimeException;
 use DateTime;
+use App\Repositories\RoomRepository;
 
 class ReservationRepository implements IReservationRepository
 {
     private PDO $db;
+    private RoomRepository $roomRepository;
 
     public function __construct()
     {
         $this->db = Database::getConnection();
+        $this->roomRepository = new RoomRepository();
     }
+
+    /* =====================================================
+       SLOT METHODS
+    ====================================================== */
 
     public function getAvailableSlotsByRoomAndDate(
         int $roomId,
@@ -26,6 +33,7 @@ class ReservationRepository implements IReservationRepository
         try {
 
             $dateObj = DateTime::createFromFormat('Y-m-d', $date);
+
             if (!$dateObj || $dateObj->format('Y-m-d') !== $date) {
                 return [];
             }
@@ -42,7 +50,7 @@ class ReservationRepository implements IReservationRepository
 
             $stmt->execute([
                 'room_id' => $roomId,
-                'day'     => $dayName
+                'day' => $dayName
             ]);
 
             $slots = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -52,6 +60,7 @@ class ReservationRepository implements IReservationRepository
             }
 
             if ($reservationId !== null) {
+
                 $stmt = $this->db->prepare("
                     SELECT time_slot_id
                     FROM reservations
@@ -59,28 +68,34 @@ class ReservationRepository implements IReservationRepository
                       AND date = :date
                       AND id != :reservation_id
                 ");
+
                 $stmt->execute([
-                    'room_id'        => $roomId,
-                    'date'           => $date,
+                    'room_id' => $roomId,
+                    'date' => $date,
                     'reservation_id' => $reservationId
                 ]);
+
             } else {
+
                 $stmt = $this->db->prepare("
                     SELECT time_slot_id
                     FROM reservations
                     WHERE room_id = :room_id
                       AND date = :date
                 ");
+
                 $stmt->execute([
                     'room_id' => $roomId,
-                    'date'    => $date
+                    'date' => $date
                 ]);
             }
 
             $booked = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
             $available = [];
+
             foreach ($slots as $slot) {
+
                 if (!in_array($slot['id'], $booked)) {
                     $available[] = $slot;
                 }
@@ -89,34 +104,32 @@ class ReservationRepository implements IReservationRepository
             return $available;
 
         } catch (\Throwable $e) {
+
             error_log("AVAILABLE SLOTS ERROR: " . $e->getMessage());
             return [];
         }
     }
 
-    public function getSlotsByRoom(int $roomId): array
-    {
-        try {
-            $stmt = $this->db->prepare("
-                SELECT *
-                FROM time_slots
-                WHERE room_id = :room_id
-                ORDER BY start_time ASC
-            ");
+public function getSlotsByRoom(int $roomId, string $reservationDate): array
+{
+    try {
 
-            $stmt->execute(['room_id' => $roomId]);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $this->roomRepository
+            ->getTimeSlotsByRoom($roomId, $reservationDate);
 
-        } catch (PDOException $e) {
-            throw new RuntimeException("Failed to retrieve slots.");
-        }
+    } catch (PDOException $e) {
+
+        error_log("ReservationRepository::getSlotsByRoom error: " . $e->getMessage());
+        throw new RuntimeException("Failed to retrieve slots.");
     }
+}
 
     public function getSlotsByRoomAndDate(
         int $roomId,
         string $date,
         int $excludeId = 0
     ): array {
+
         return $this->getAvailableSlotsByRoomAndDate(
             $roomId,
             $date,
@@ -132,6 +145,7 @@ class ReservationRepository implements IReservationRepository
     ): bool {
 
         try {
+
             $stmt = $this->db->prepare("
                 SELECT COUNT(*)
                 FROM reservations
@@ -142,18 +156,26 @@ class ReservationRepository implements IReservationRepository
             ");
 
             $stmt->execute([
-                'room_id'    => $roomId,
-                'date'       => $date,
-                'slot_id'    => $slotId,
+                'room_id' => $roomId,
+                'date' => $date,
+                'slot_id' => $slotId,
                 'exclude_id' => $excludeId
             ]);
 
-            return (int)$stmt->fetchColumn() === 0;
+            $count = (int)$stmt->fetchColumn();
+
+            return $count === 0;
 
         } catch (PDOException $e) {
+
+            error_log("Availability error: " . $e->getMessage());
             throw new RuntimeException("Failed to check availability.");
         }
     }
+
+    /* =====================================================
+       CREATE
+    ====================================================== */
 
     public function create(array $data): bool
     {
@@ -165,13 +187,17 @@ class ReservationRepository implements IReservationRepository
         ");
 
         return $stmt->execute([
-            'user_id'      => $data['user_id'],
-            'room_id'      => $data['room_id'],
+            'user_id' => $data['user_id'],
+            'room_id' => $data['room_id'],
             'time_slot_id' => $data['time_slot_id'],
-            'date'         => $data['reservation_date'],
-            'num_people'   => $data['num_people']
+            'date' => $data['date'],
+            'num_people' => $data['num_people'] ?? 1
         ]);
     }
+
+    /* =====================================================
+       FETCH
+    ====================================================== */
 
     public function getByUserId(int $userId): array
     {
@@ -181,10 +207,11 @@ class ReservationRepository implements IReservationRepository
             JOIN rooms rm ON r.room_id = rm.id
             JOIN time_slots ts ON r.time_slot_id = ts.id
             WHERE r.user_id = :user_id
-            ORDER BY CAST(r.date AS DATE) ASC, ts.start_time ASC
+            ORDER BY r.date ASC, ts.start_time ASC
         ");
 
         $stmt->execute(['user_id' => $userId]);
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -200,12 +227,16 @@ class ReservationRepository implements IReservationRepository
         ");
 
         $stmt->execute([
-            'id'      => $id,
+            'id' => $id,
             'user_id' => $userId
         ]);
 
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
+    /* =====================================================
+       DELETE
+    ====================================================== */
 
     public function delete(int $id, int $userId): bool
     {
@@ -216,10 +247,14 @@ class ReservationRepository implements IReservationRepository
         ");
 
         return $stmt->execute([
-            'id'      => $id,
+            'id' => $id,
             'user_id' => $userId
         ]);
     }
+
+    /* =====================================================
+       UPDATE
+    ====================================================== */
 
     public function update(int $id, int $userId, array $data): bool
     {
@@ -234,14 +269,18 @@ class ReservationRepository implements IReservationRepository
         ");
 
         return $stmt->execute([
-            'room_id'      => $data['room_id'],
+            'room_id' => $data['room_id'],
             'time_slot_id' => $data['time_slot_id'],
-            'date'         => $data['reservation_date'],
-            'num_people'   => $data['num_people'],
-            'id'           => $id,
-            'user_id'      => $userId
+            'date' => $data['date'],
+            'num_people' => $data['num_people'],
+            'id' => $id,
+            'user_id' => $userId
         ]);
     }
+
+    /* =====================================================
+       DETAILS
+    ====================================================== */
 
     public function getReservationDetails(int $id): ?array
     {
@@ -263,31 +302,32 @@ class ReservationRepository implements IReservationRepository
     }
 
     /* =====================================================
-       DELETE SLOT WITH CASCADE
-       Cancels all future reservations tied to the slot,
-       then deletes the slot itself in one transaction.
+       SLOT DELETE WITH CASCADE
     ====================================================== */
 
     public function getFutureReservationsBySlot(int $slotId): array
     {
         try {
+
             $stmt = $this->db->prepare("
                 SELECT r.id, r.date, r.num_people,
-                       u.name  AS user_name,
+                       u.name AS user_name,
                        u.email AS user_email,
                        rm.room_number
                 FROM reservations r
                 JOIN rooms rm ON r.room_id = rm.id
-                JOIN users u  ON r.user_id = u.id
+                JOIN users u ON r.user_id = u.id
                 WHERE r.time_slot_id = :slot_id
                   AND r.date >= CURDATE()
                 ORDER BY r.date ASC
             ");
 
             $stmt->execute(['slot_id' => $slotId]);
+
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         } catch (\Throwable $e) {
+
             error_log("getFutureReservationsBySlot error: " . $e->getMessage());
             return [];
         }
@@ -296,25 +336,26 @@ class ReservationRepository implements IReservationRepository
     public function deleteSlotWithCascade(int $slotId): array
     {
         try {
+
             $this->db->beginTransaction();
 
-            // Count future reservations for this slot
             $stmt = $this->db->prepare("
-                SELECT COUNT(*) FROM reservations
+                SELECT COUNT(*)
+                FROM reservations
                 WHERE time_slot_id = :slot_id
                   AND date >= CURDATE()
             ");
+
             $stmt->execute(['slot_id' => $slotId]);
+
             $affected = (int)$stmt->fetchColumn();
 
-            // Delete future reservations first (satisfies FK constraint)
             $this->db->prepare("
                 DELETE FROM reservations
                 WHERE time_slot_id = :slot_id
                   AND date >= CURDATE()
             ")->execute(['slot_id' => $slotId]);
 
-            // Now safe to delete the slot
             $this->db->prepare("
                 DELETE FROM time_slots
                 WHERE id = :slot_id
@@ -322,12 +363,50 @@ class ReservationRepository implements IReservationRepository
 
             $this->db->commit();
 
-            return ['success' => true, 'deleted' => $affected];
+            return [
+                'success' => true,
+                'deleted' => $affected
+            ];
 
         } catch (\Throwable $e) {
+
             $this->db->rollBack();
+
             error_log("deleteSlotWithCascade error: " . $e->getMessage());
-            return ['success' => false, 'deleted' => 0];
+
+            return [
+                'success' => false,
+                'deleted' => 0
+            ];
         }
     }
+
+    public function getSlotsForRoom(int $roomId, string $date): array
+{
+    $stmt = $this->db->prepare("
+        SELECT 
+            ts.id,
+            ts.room_id,
+            ts.day_of_week,
+            ts.start_time,
+            ts.end_time,
+            CASE 
+                WHEN r.id IS NOT NULL THEN 1
+                ELSE 0
+            END AS is_taken
+        FROM time_slots ts
+        LEFT JOIN reservations r
+            ON r.time_slot_id = ts.id
+            AND r.date = :date
+        WHERE ts.room_id = :room_id
+        ORDER BY ts.start_time ASC
+    ");
+
+    $stmt->execute([
+        'room_id' => $roomId,
+        'date' => $date
+    ]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 }

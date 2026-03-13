@@ -80,7 +80,7 @@ $today = date('Y-m-d');
                                class="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 font-semibold">
                     </div>
 
-                    <!-- DATE (FIXED PROPERLY) -->
+                    <!-- DATE -->
                     <div>
                         <label class="block text-xs font-bold uppercase text-slate-400 mb-2">
                             Date
@@ -89,10 +89,10 @@ $today = date('Y-m-d');
                         <input type="date"
                                id="dateInput"
                                name="reservation_date"
-                               <?= $isEditing ? '' : 'min="' . $today . '"' ?>
+                               min="<?= $today ?>"
                                required
                                value="<?= $isEditing
-                                    ? htmlspecialchars($reservation['reservation_date'])
+                                    ? htmlspecialchars($reservation['date'])
                                     : $today ?>"
                                class="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 font-semibold">
                     </div>
@@ -129,7 +129,7 @@ $today = date('Y-m-d');
 <?php require __DIR__ . '/partials/footer.php'; ?>
 
 <?php if ($isEditing): ?>
-    <script src="/assets/js/edit_reservation.js"></script>
+<script src="/assets/js/edit_reservation.js"></script>
 <?php else: ?>
-    <script src="/assets/js/reservation-form.js"></script>
+<script src="/assets/js/reservation-form.js"></script>
 <?php endif; ?>

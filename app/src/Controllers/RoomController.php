@@ -29,6 +29,7 @@ class RoomController
     public function list(): void
     {
         try {
+
             $roomsRaw = $this->service->getAllRooms();
 
             $rooms = array_map(
@@ -36,19 +37,25 @@ class RoomController
                 $roomsRaw
             );
 
-            // ✅ ADD WEEKLY SLOTS TO EACH ROOM
+            $reservationDate = $_GET['date'] ?? date('Y-m-d');
+
             foreach ($rooms as $room) {
+
+                // Service returns slots with correct taken state
                 $room->weeklySlots = $this->reservationService
-                    ->getSlotsForRoom($room->id);
+                    ->getSlotsForRoom($room->id, $reservationDate);
             }
 
             require __DIR__ . '/../Views/rooms_list.php';
 
-        } catch (RuntimeException $e) {
-            error_log("RoomController::list error: " . $e->getMessage());
-            http_response_code(500);
-            echo "<h1>500 Internal Server Error</h1>";
-            echo "<p>Unable to load rooms.</p>";
+        } catch (\Throwable $e) {
+
+            echo "<pre>";
+            echo "ERROR:\n";
+            echo $e->getMessage() . "\n\n";
+            echo $e->getTraceAsString();
+            echo "</pre>";
+            exit;
         }
     }
 

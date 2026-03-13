@@ -27,6 +27,7 @@ class ReservationController
     public function index()
     {
         try {
+
             if (!isset($_SESSION['user'])) {
                 header('Location: /login');
                 exit;
@@ -44,7 +45,9 @@ class ReservationController
             require __DIR__ . '/../Views/my_reservations.php';
 
         } catch (RuntimeException $e) {
+
             error_log("ReservationController::index error: " . $e->getMessage());
+
             http_response_code(500);
             echo "<h1>500 Internal Server Error</h1>";
             echo "<p>Unable to load reservations.</p>";
@@ -54,6 +57,7 @@ class ReservationController
     public function showForm()
     {
         try {
+
             if (!isset($_SESSION['user'])) {
                 header('Location: /login');
                 exit;
@@ -70,43 +74,54 @@ class ReservationController
             require __DIR__ . '/../Views/reservation_form.php';
 
         } catch (RuntimeException $e) {
+
             error_log("ReservationController::showForm error: " . $e->getMessage());
+
             http_response_code(500);
             echo "<h1>500 Internal Server Error</h1>";
             echo "<p>Unable to load reservation form.</p>";
         }
     }
 
-    public function edit()
-    {
-        try {
-            if (!isset($_SESSION['user'])) {
-                header('Location: /login');
-                exit;
-            }
+   public function edit()
+{
+    try {
 
-            $id     = $_GET['id'] ?? null;
-            $userId = $_SESSION['user']['id'];
-
-            $reservation = $this->service->getById((int)$id, $userId);
-
-            if (!$reservation) {
-                header('Location: /my-reservations?error=not_found');
-                exit;
-            }
-
-            $rooms = $this->rooms->getAllRooms();
-            $slots = $this->service->getSlotsForRoom((int)$reservation['room_id']);
-
-            require __DIR__ . '/../Views/reservation_form.php';
-
-        } catch (RuntimeException $e) {
-            error_log("ReservationController::edit error: " . $e->getMessage());
-            http_response_code(500);
-            echo "<h1>500 Internal Server Error</h1>";
-            echo "<p>Unable to load reservation.</p>";
+        if (!isset($_SESSION['user'])) {
+            header('Location: /login');
+            exit;
         }
+
+        $id     = $_GET['id'] ?? null;
+        $userId = $_SESSION['user']['id'];
+
+        $reservation = $this->service->getById((int)$id, $userId);
+
+        if (!$reservation) {
+            header('Location: /my-reservations?error=not_found');
+            exit;
+        }
+
+        $rooms = $this->rooms->getAllRooms();
+
+        // ✅ Load slots for THIS reservation date
+        $slots = $this->service->getAvailableSlots(
+            (int)$reservation['room_id'],
+            $reservation['date'],
+            (int)$reservation['id'] // allow current reservation slot
+        );
+
+        require __DIR__ . '/../Views/reservation_form.php';
+
+    } catch (RuntimeException $e) {
+
+        error_log("ReservationController::edit error: " . $e->getMessage());
+
+        http_response_code(500);
+        echo "<h1>500 Internal Server Error</h1>";
+        echo "<p>Unable to load reservation.</p>";
     }
+}
 
     /* ===============================
        STORE
@@ -115,6 +130,7 @@ class ReservationController
     public function store()
     {
         try {
+
             if (!isset($_SESSION['user'])) {
                 header('Location: /login');
                 exit;
@@ -128,10 +144,9 @@ class ReservationController
                 exit;
             }
 
-            $reservationDate = $_POST['reservation_date'] ?? '';
+            $reservationDate = $_POST['date'] ?? '';
             $today = date('Y-m-d');
 
-            // 🔥 SIMPLE & SAFE FIX
             if (!$reservationDate || $reservationDate < $today) {
                 header('Location: /rooms?error=past_date');
                 exit;
@@ -146,24 +161,30 @@ class ReservationController
             }
 
             $data = [
-                'user_id'          => $_SESSION['user']['id'],
-                'room_id'          => $_POST['room_id'],
-                'time_slot_id'     => $slotId,
-                'reservation_date' => $reservationDate,
-                'num_people'       => $numPeople
+                'user_id'      => $_SESSION['user']['id'],
+                'room_id'      => $_POST['room_id'],
+                'time_slot_id' => $slotId,
+                'date'         => $reservationDate,
+                'num_people'   => $numPeople
             ];
 
             $newReservationId = $this->service->createReservation($data);
 
             if ($newReservationId) {
+
                 header('Location: /reservations/success?id=' . $newReservationId);
+
             } else {
+
                 header('Location: /rooms?error=collision');
             }
+
             exit;
 
         } catch (RuntimeException $e) {
+
             error_log("ReservationController::store error: " . $e->getMessage());
+
             http_response_code(500);
             echo "<h1>500 Internal Server Error</h1>";
             echo "<p>Unable to create reservation.</p>";
@@ -176,7 +197,10 @@ class ReservationController
 
     public function update()
     {
+    //      var_dump($_POST);
+    // exit;
         try {
+
             if (!isset($_SESSION['user'])) {
                 header('Location: /login');
                 exit;
@@ -189,16 +213,18 @@ class ReservationController
             $slot   = $slotId ? $this->service->getSlotById((int)$slotId) : null;
 
             if (!$slot || $slot['start_time'] >= $slot['end_time']) {
+
                 header("Location: /reservations/edit?id=$id&error=invalid_time_slot");
                 exit;
             }
 
-            $reservationDate = $_POST['reservation_date'] ?? '';
-            $today = date('Y-m-d');
+            /* FIXED — no past-date validation when editing */
 
-            // 🔥 SIMPLE & SAFE FIX
-            if (!$reservationDate || $reservationDate < $today) {
-                header("Location: /reservations/edit?id=$id&error=past_date");
+            $reservationDate = $_POST['date'] ?? '';
+
+            if (!$reservationDate) {
+
+                header("Location: /reservations/edit?id=$id&error=invalid_date");
                 exit;
             }
 
@@ -206,37 +232,43 @@ class ReservationController
             $numPeople = (int)($_POST['num_people'] ?? 1);
 
             if (!$room || $numPeople <= 0 || $numPeople > (int)$room['capacity']) {
+
                 header("Location: /reservations/edit?id=$id&error=invalid_group_size");
                 exit;
             }
 
             $data = [
-                'room_id'          => $_POST['room_id'],
-                'time_slot_id'     => $slotId,
-                'reservation_date' => $reservationDate,
-                'num_people'       => $numPeople
+                'room_id'      => $_POST['room_id'],
+                'time_slot_id' => $slotId,
+                'date'         => $reservationDate,
+                'num_people'   => $numPeople
             ];
 
             if ($id && $this->service->updateReservation((int)$id, $userId, $data)) {
+
                 header('Location: /my-reservations?status=updated');
+
             } else {
+
                 header("Location: /reservations/edit?id=$id&error=collision");
             }
+
             exit;
 
         } catch (RuntimeException $e) {
+
             error_log("ReservationController::update error: " . $e->getMessage());
+
             http_response_code(500);
             echo "<h1>500 Internal Server Error</h1>";
             echo "<p>Unable to update reservation.</p>";
         }
     }
 
-    /* Remaining methods unchanged */
-
     public function cancel()
     {
         try {
+
             if (!isset($_SESSION['user'])) {
                 header('Location: /login');
                 exit;
@@ -246,14 +278,20 @@ class ReservationController
             $userId = $_SESSION['user']['id'];
 
             if ($id && $this->service->cancelReservation((int)$id, $userId)) {
+
                 header('Location: /my-reservations?status=cancelled');
+
             } else {
+
                 header('Location: /my-reservations?error=failed');
             }
+
             exit;
 
         } catch (RuntimeException $e) {
+
             error_log("ReservationController::cancel error: " . $e->getMessage());
+
             http_response_code(500);
             echo "<h1>500 Internal Server Error</h1>";
             echo "<p>Unable to cancel reservation.</p>";
@@ -277,57 +315,41 @@ class ReservationController
         require __DIR__ . '/../Views/confirm_cancel.php';
     }
 
-    public function adminIndex()
+    public function success()
     {
         try {
-            if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
-                header('Location: /login?error=unauthorized');
+
+            if (!isset($_SESSION['user'])) {
+                header('Location: /login');
                 exit;
             }
 
-            $allReservations = $this->service->getAllReservations();
+            $id = $_GET['id'] ?? null;
 
-            require __DIR__ . '/../Views/admin/all_reservations.php';
+            if (!$id) {
+                header('Location: /my-reservations');
+                exit;
+            }
+
+            $reservation = $this->service->getReservationDetails((int)$id);
+
+            if (!$reservation) {
+
+                header('Location: /my-reservations?error=not_found');
+                exit;
+            }
+
+            $reservationVM = new ReservationViewModel($reservation);
+
+            require __DIR__ . '/../Views/reservation_success.php';
 
         } catch (RuntimeException $e) {
-            error_log("ReservationController::adminIndex error: " . $e->getMessage());
+
+            error_log("ReservationController::success error: " . $e->getMessage());
+
             http_response_code(500);
             echo "<h1>500 Internal Server Error</h1>";
-            echo "<p>Unable to load admin reservations.</p>";
+            echo "<p>Unable to load success page.</p>";
         }
     }
-
-    public function success()
-{
-    try {
-        if (!isset($_SESSION['user'])) {
-            header('Location: /login');
-            exit;
-        }
-
-        $id = $_GET['id'] ?? null;
-
-        if (!$id) {
-            header('Location: /my-reservations');
-            exit;
-        }
-
-        $reservation = $this->service->getReservationDetails((int)$id);
-
-        if (!$reservation) {
-            header('Location: /my-reservations?error=not_found');
-            exit;
-        }
-
-        $reservationVM = new ReservationViewModel($reservation);
-
-        require __DIR__ . '/../Views/reservation_success.php';
-
-    } catch (RuntimeException $e) {
-        error_log("ReservationController::success error: " . $e->getMessage());
-        http_response_code(500);
-        echo "<h1>500 Internal Server Error</h1>";
-        echo "<p>Unable to load success page.</p>";
-    }
-}
 }

@@ -13,6 +13,7 @@
         </header>
 
         <div id="room-list" class="grid gap-6">
+
             <?php foreach ($rooms as $room): ?>
                 <?php $roomId = (int) $room->id; ?>
 
@@ -46,6 +47,7 @@
                             class="w-full sm:w-auto text-blue-600 bg-blue-50 px-6 py-3 rounded-xl font-bold text-sm hover:bg-blue-600 hover:text-white transition-all">
                             View Available Today
                         </button>
+
                     </div>
 
                     <div class="mt-8">
@@ -75,6 +77,26 @@
                                 <?php foreach ($order as $day): ?>
                                     <?php if (!empty($grouped[$day])): ?>
 
+                                        <?php
+                                        /* --------------------------------------------------
+                                           FIXED DATE CALCULATION
+                                           This ensures the correct calendar date for
+                                           the current week weekday (not next week).
+                                        ---------------------------------------------------*/
+
+                                        $today = new DateTime();
+
+                                        $target = new DateTime();
+                                        $target->modify($day);
+
+                                        if ($target < $today) {
+                                            $target->modify("next $day");
+                                        }
+
+                                        $dayDate = $target;
+                                        $reservationDate = $target->format('Y-m-d');
+                                        ?>
+
                                         <div class="bg-gradient-to-br from-white to-slate-50 
                                                     border border-slate-100 
                                                     rounded-2xl p-5 
@@ -83,7 +105,7 @@
 
                                             <div class="flex items-center justify-between mb-4">
                                                 <p class="font-bold text-slate-800">
-                                                    <?= $day ?>
+                                                    <?= $day ?> (<?= $dayDate->format('M d') ?>)
                                                 </p>
                                                 <span class="text-[10px] text-slate-400 uppercase tracking-widest">
                                                     <?= count($grouped[$day]) ?> Slots
@@ -94,41 +116,48 @@
 
                                                 <?php foreach ($grouped[$day] as $slot): ?>
 
-                                                    <?php $isTaken = !empty($slot['is_taken']); ?>
+                                                    <?php 
+                                                    // $isTaken = !empty($slot['is_taken']);
+                                                    $isTaken = !empty($slot['reservation_date']) && $slot['reservation_date'] === $reservationDate;
+                                                    ?>
 
-                                                    <form action="/reservations/store" method="POST"
+                                                    <div
                                                         class="flex items-center justify-between rounded-xl px-3 py-2 border transition-all duration-200
                                                         <?= $isTaken
-                                                            ? 'bg-gray-200 border-gray-200 opacity-60 pointer-events-none'
-                                                            : 'bg-white border-slate-100 hover:border-blue-300 hover:bg-blue-50' ?>">
+                                                            ? 'bg-gray-200 border-gray-200 opacity-70'
+                                                            : 'bg-white border-slate-100 hover:border-blue-300 hover:bg-blue-50' ?>"
+                                                        <?= $isTaken ? 'aria-disabled="true"' : '' ?>
+                                                    >
 
                                                         <div class="text-sm font-medium text-slate-700">
-                                                            <?= substr($slot['start_time'],0,5) ?>
-                                                            -
-                                                            <?= substr($slot['end_time'],0,5) ?>
+                                                            <?= substr($slot['start_time'],0,5) ?> - <?= substr($slot['end_time'],0,5) ?>
                                                         </div>
 
                                                         <?php if (!$isTaken): ?>
 
-                                                            <input type="hidden" name="room_id" value="<?= $roomId ?>">
-                                                            <input type="hidden" name="time_slot_id" value="<?= $slot['id'] ?>">
-                                                            <input type="hidden" name="reservation_date" value="<?= date('Y-m-d') ?>">
+                                                            <form action="/reservations/store" method="POST">
+                                                                <input type="hidden" name="room_id" value="<?= $roomId ?>">
+                                                                <input type="hidden" name="time_slot_id" value="<?= $slot['id'] ?>">
+                                                                <input type="hidden" name="date" value="<?= $reservationDate ?>">
 
-                                                            <button type="submit"
-                                                                class="text-xs font-semibold bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-all">
-                                                                Book
-                                                            </button>
+                                                                <button
+                                                                    type="submit"
+                                                                    class="text-xs font-semibold bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition">
+                                                                    Book
+                                                                </button>
+                                                            </form>
 
                                                         <?php else: ?>
 
-                                                            <button disabled
-                                                                class="text-xs font-semibold bg-gray-400 text-white px-3 py-1.5 rounded-lg cursor-not-allowed">
+                                                            <span
+                                                                class="text-xs font-semibold bg-gray-400 text-white px-3 py-1.5 rounded-lg"
+                                                                aria-label="This time slot is already reserved">
                                                                 Taken
-                                                            </button>
+                                                            </span>
 
                                                         <?php endif; ?>
 
-                                                    </form>
+                                                    </div>
 
                                                 <?php endforeach; ?>
 
@@ -155,6 +184,7 @@
                 </div>
 
             <?php endforeach; ?>
+
         </div>
 
     </div>
